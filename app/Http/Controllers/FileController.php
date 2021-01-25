@@ -28,15 +28,13 @@ class FileController extends Controller
         $url = Storage::disk('s3')->temporaryUrl('originalVoices/' . $fileName, now()->addMinutes(5));
         $path = 'clonedVoices/' . $fileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/clonedVoices';
-        $response = Http::post(\Config::get('values.ai_url') . '/definir_ruta', [
+        $response = Http::post(\Config::get('values.ai_url') . 'itemsVoice', [
             'text' => $text,
             'url' => $url,
             'fileName' => $fileName,
             'path' => $path,
             'postRoute' => $postRoute
         ]);
-/*        $string = strval($response);
-        json_decode($string);*/
         return response()->json([
             'url' => Storage::disk('s3')->temporaryUrl('clonedVoices/' . $fileName, now()->addMinutes(5))
         ]);
@@ -55,22 +53,25 @@ class FileController extends Controller
             ], 400);
         }
         $clonedVoice = Storage::disk('s3')->temporaryUrl('clonedVoices/' . $request->clonedVoiceName, now()->addMinutes(5));
-        $originalVideo = Storage::disk('s3')->temporaryUrl('videosOriginal/' . $request->originalVideoName, now()->addMinutes(5));
+        $originalVideo = Storage::disk('s3')->temporaryUrl('videosOriginal/' . $request->originalVideoName, now()->addMinutes(5), [
+            'ResponseContentType' => 'application/octet-stream',
+            'ResponseContentDisposition' => 'attachment; filename=' . $request->originalVideoName,
+        ]);
         $path = 'videosCloned/' . $request->originalVideoName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/videosCloned';
-        $response = Http::post(\Config::get('values.ai_url') . '/definir_ruta', [ //falta definirlo
+        set_time_limit(0);
+        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVideo', [
             'urlClonedVoice' => $clonedVoice,
             'urlOriginalVideo' => $originalVideo,
             'fileName' => $request->originalVideoName,
             'path' => $path,
             'postRoute' => $postRoute
         ]);
-/*        $string = strval($response);
-        return json_decode($string);*/
         return response()->json([
             'url' => Storage::disk('s3')->temporaryUrl('videosCloned/' . $request->originalVideoName, now()->addMinutes(5))
         ]);
     }
+
     public function list(Request $request, $type)
     {
         return response()->json([
