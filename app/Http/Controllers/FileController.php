@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+set_time_limit(900);
+
 use App\Models\File;
 use http\Client\Response;
 use Illuminate\Http\Request;
@@ -28,7 +30,7 @@ class FileController extends Controller
         $url = Storage::disk('s3')->temporaryUrl('originalVoices/' . $fileName, now()->addMinutes(5));
         $path = 'clonedVoices/' . $fileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/clonedVoices';
-        $response = Http::post(\Config::get('values.ai_url') . 'itemsVoice', [
+        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVoice', [
             'text' => $text,
             'url' => $url,
             'fileName' => $fileName,
@@ -59,7 +61,6 @@ class FileController extends Controller
         ]);
         $path = 'videosCloned/' . $request->originalVideoName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/videosCloned';
-        set_time_limit(0);
         $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVideo', [
             'urlClonedVoice' => $clonedVoice,
             'urlOriginalVideo' => $originalVideo,
