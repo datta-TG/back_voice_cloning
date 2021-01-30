@@ -19,6 +19,7 @@ Route::post('/upload/{type}', [FileController::class, 'upload']);
 Route::get('/list-files/{type}', [FileController::class, 'list']);
 Route::post('/generate-voice', [FileController::class, 'generateVoice']);
 Route::post('/generate-video', [FileController::class, 'generateVideo']);
+
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/signup', [AuthController::class, 'signup']);

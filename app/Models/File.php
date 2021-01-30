@@ -53,7 +53,9 @@ class File extends Model
     {
         $disk = self::$config['disk'];
         if (in_array($type, self::$config['directories'])) {
-            return Storage::disk($disk)->allFiles($type);
+            return array_map(function ($path) {
+                return basename($path);
+            }, Storage::disk($disk)->files($type));
         } else {
             return
                 [
