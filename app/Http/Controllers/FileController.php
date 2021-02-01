@@ -5,13 +5,10 @@ namespace App\Http\Controllers;
 set_time_limit(900);
 
 use App\Models\File;
-use http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use function GuzzleHttp\Psr7\str;
-use function Symfony\Component\String\u;
 
 class FileController extends Controller
 {
@@ -33,16 +30,23 @@ class FileController extends Controller
         $url = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'originalVoices/' . $fileName, now()->addMinutes(5));
         $path = strval($user->id) . '/' . 'clonedVoices/' . $fileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/clonedVoices';
-        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVoice', [
+        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVoice/', [
             'text' => $text,
             'url' => $url,
             'fileName' => $fileName,
             'path' => $path,
             'postRoute' => $postRoute
         ]);
-        return response()->json([
-            'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
-        ]);
+        if ($response) {
+            return response()->json([
+                'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
+            ]);
+        } else {
+            return response()->json([
+                'message' => 'Error',
+                'errors' => 'Failed to create voice'
+            ]);
+        }
     }
 
     public function generateVideo(Request $request)
@@ -63,18 +67,25 @@ class FileController extends Controller
             'ResponseContentType' => 'application/octet-stream',
             'ResponseContentDisposition' => 'attachment; filename=' . $request->originalVideoName,
         ]);
-        $path =strval($user->id) . '/' . 'videosCloned/' . $request->originalVideoName;
+        $path = strval($user->id) . '/' . 'videosCloned/' . $request->originalVideoName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/videosCloned';
-        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVideo', [
+        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVideo/', [
             'urlClonedVoice' => $clonedVoice,
             'urlOriginalVideo' => $originalVideo,
             'fileName' => $request->originalVideoName,
             'path' => $path,
             'postRoute' => $postRoute
         ]);
-        return response()->json([
-            'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
-        ]);
+        if($response){
+            return response()->json([
+                'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
+            ]);
+        }else{
+            return response()->json([
+                'message' => 'Error',
+                'errors' => 'Failed to create video'
+            ]);
+        }
     }
 
     public function list(Request $request, $type)
