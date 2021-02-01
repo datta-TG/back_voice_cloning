@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use function GuzzleHttp\Psr7\str;
+use function Symfony\Component\String\u;
 
 class FileController extends Controller
 {
@@ -27,8 +29,9 @@ class FileController extends Controller
         }
         $text = $request->text;
         $fileName = $request->fileName;
-        $url = Storage::disk('s3')->temporaryUrl('originalVoices/' . $fileName, now()->addMinutes(5));
-        $path = 'clonedVoices/' . $fileName;
+        $user = $request->user();
+        $url = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'originalVoices/' . $fileName, now()->addMinutes(5));
+        $path = strval($user->id) . '/' . 'clonedVoices/' . $fileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/clonedVoices';
         $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVoice', [
             'text' => $text,
@@ -38,7 +41,7 @@ class FileController extends Controller
             'postRoute' => $postRoute
         ]);
         return response()->json([
-            'url' => Storage::disk('s3')->temporaryUrl('clonedVoices/' . $fileName, now()->addMinutes(5))
+            'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
         ]);
     }
 
@@ -54,12 +57,13 @@ class FileController extends Controller
                 'errors' => $validator->errors()->toArray()
             ], 400);
         }
-        $clonedVoice = Storage::disk('s3')->temporaryUrl('clonedVoices/' . $request->clonedVoiceName, now()->addMinutes(5));
-        $originalVideo = Storage::disk('s3')->temporaryUrl('videosOriginal/' . $request->originalVideoName, now()->addMinutes(5), [
+        $user = $request->user();
+        $clonedVoice = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'clonedVoices/' . $request->clonedVoiceName, now()->addMinutes(5));
+        $originalVideo = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'videosOriginal/' . $request->originalVideoName, now()->addMinutes(5), [
             'ResponseContentType' => 'application/octet-stream',
             'ResponseContentDisposition' => 'attachment; filename=' . $request->originalVideoName,
         ]);
-        $path = 'videosCloned/' . $request->originalVideoName;
+        $path =strval($user->id) . '/' . 'videosCloned/' . $request->originalVideoName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/videosCloned';
         $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVideo', [
             'urlClonedVoice' => $clonedVoice,
@@ -69,14 +73,20 @@ class FileController extends Controller
             'postRoute' => $postRoute
         ]);
         return response()->json([
-            'url' => Storage::disk('s3')->temporaryUrl('videosCloned/' . $request->originalVideoName, now()->addMinutes(5))
+            'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
         ]);
     }
 
     public function list(Request $request, $type)
     {
+        $user = $request->user();
+        /*        $filteredFiles = File::where('user_id', $user->id)->where('type', $type)->select('name')->get();
+                $array = array();
+                foreach ($filteredFiles as $file) {
+                    array_push($array, $file->name);
+                }*/
         return response()->json([
-            'result' => File::list($type)
+            'result' => File::list(strval($user->id) . '/' . $type)
         ]);
     }
 
@@ -92,8 +102,11 @@ class FileController extends Controller
             ], 400);
         }
         $file = $request->file('file');
+        $userFile = new File();
+        $result = $userFile->upload($file, $type, $request->user()->id);
+        $request->user()->files()->save($userFile);
         return response()->json([
-            'result' => File::upload($file, $type)
+            'result' => $result
         ]);
     }
 

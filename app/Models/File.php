@@ -11,7 +11,9 @@ class File extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name'
+        'name',
+        'route',
+        'type'
     ];
     private static $config = array(
         'disk' => 's3',
@@ -25,13 +27,18 @@ class File extends Model
         return $this->belongsTo(User::class);
     }
 
-    public static function upload($file, $type)
+    public function upload($file, $type, $userId)
     {
         $disk = self::$config['disk'];
         if (in_array($file->getClientOriginalExtension(), self::$config['allowFileTypes'])) {
             if (in_array($type, self::$config['directories'])) {
-                Storage::disk($disk)->putFileAs($type . '/', $file, $file->getClientOriginalName());
-                return $type . '/' . $file->getClientOriginalName();
+                $path = strval($userId) . '/' . $type . '/';
+                Storage::disk($disk)->putFileAs($path, $file, $file->getClientOriginalName());
+                $fullPath = $path . $file->getClientOriginalName();
+                $this->name = $file->getClientOriginalName();
+                $this->route = $fullPath;
+                $this->type = $type;
+                return $fullPath;
             } else {
                 return
                     [
@@ -52,7 +59,8 @@ class File extends Model
     public static function list($type): array
     {
         $disk = self::$config['disk'];
-        if (in_array($type, self::$config['directories'])) {
+        $directory = explode('/', $type)[1];
+        if (in_array($directory, self::$config['directories'])) {
             return array_map(function ($path) {
                 return basename($path);
             }, Storage::disk($disk)->files($type));
