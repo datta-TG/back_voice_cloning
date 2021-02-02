@@ -4,7 +4,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,9 +15,6 @@ use Illuminate\Support\Facades\Storage;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-Route::post('/test', function () {
-    return Storage::disk('s3')->allDirectories();
-});
 
 Route::middleware('auth:api')->group(function () {
     Route::post('/upload/{type}', [FileController::class, 'upload']);
