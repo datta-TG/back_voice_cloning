@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 set_time_limit(900);
 
 use App\Models\File;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -76,11 +77,11 @@ class FileController extends Controller
             'path' => $path,
             'postRoute' => $postRoute
         ]);
-        if($response){
+        if ($response) {
             return response()->json([
                 'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
             ]);
-        }else{
+        } else {
             return response()->json([
                 'message' => 'Error',
                 'errors' => 'Failed to create video'
@@ -104,7 +105,7 @@ class FileController extends Controller
     public function upload(Request $request, $type)
     {
         $validator = Validator::make($request->all(), [
-            'file' => 'required|mimes:wav,mp4,jpg'
+            'file' => 'required'
         ]);
         if ($validator->fails()) {
             return response()->json([
@@ -113,12 +114,52 @@ class FileController extends Controller
             ], 400);
         }
         $file = $request->file('file');
-        $userFile = new File();
-        $result = $userFile->upload($file, $type, $request->user()->id);
-        $request->user()->files()->save($userFile);
+        if (!Storage::disk('local')->exists('chunks')) {
+            Storage::disk('local')->makeDirectory('chunks');
+        }
+        $path = Storage::disk('local')->path("chunks/{$file->getClientOriginalName()}");
+        \Illuminate\Support\Facades\File::append($path, $file->get());
+        if ($request->has('is_last') && $request->boolean('is_last')) {
+            $name = basename($path, '.part');
+            if (!Storage::disk('local')->exists('saved')) {
+                Storage::disk('local')->makeDirectory('saved');
+            }
+            $target = Storage::disk('local')->path('saved');
+            \Illuminate\Support\Facades\File::move($path, "$target/$name");
+            $s3Path = strval($request->user()->id) . '/' . $type . '/' . $name;
+            if (Storage::disk('s3')->exists($s3Path)) {
+
+                Storage::disk('s3')->delete($s3Path);
+
+            }
+            $upload = Storage::disk('s3')->writeStream($s3Path, Storage::disk('local')->readStream("saved/$name"));
+            if ($upload === false) {
+                throw new Exception("Couldn't upload file to S3");
+            }
+            File::create([
+                'name' => $name,
+                'route' => $s3Path,
+                'type' => $type,
+                'user_id' => $request->user()->id
+            ]);
+
+
+            $delete = Storage::disk('local')->delete("saved/$name");
+
+            if ($delete === false) {
+                throw new Exception("File could not be deleted from the local filesystem");
+            }
+        }
         return response()->json([
-            'result' => $result
+            'uploaded' => true
         ]);
+
+        /*        $userFile = new File();
+                $result = $userFile->upload($file, $type, $request->user()->id);
+                $request->user()->files()->save($userFile);
+                return response()->json([
+                    'result' => $result
+                ]);*/
     }
 
     public function getFiles(Request $request)

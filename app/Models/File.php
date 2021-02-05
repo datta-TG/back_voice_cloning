@@ -13,7 +13,8 @@ class File extends Model
     protected $fillable = [
         'name',
         'route',
-        'type'
+        'type',
+        'user_id'
     ];
     private static $config = array(
         'disk' => 's3',
