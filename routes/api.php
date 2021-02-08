@@ -24,6 +24,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/list-files/{type}', [FileController::class, 'list']);
     Route::post('/generate-voice', [FileController::class, 'generateVoice']);
     Route::post('/generate-video', [FileController::class, 'generateVideo']);
+    Route::post('/get-url/{type}', [FileController::class, 'preview']);
 });
 
 

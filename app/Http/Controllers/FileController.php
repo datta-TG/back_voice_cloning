@@ -13,11 +13,32 @@ use Illuminate\Support\Facades\Validator;
 
 class FileController extends Controller
 {
+    public function preview(Request $request, $type)
+    {
+        $validator = Validator::make($request->all(), [
+            'fileName' => 'required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error',
+                'errors' => $validator->errors()->toArray()
+            ], 400);
+        }
+        $user = $request->user();
+        $filename = $request->fileName;
+        $url = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . $type . '/' . $filename, now()->addMinutes(5));
+        return response()->json([
+            'url' => $url
+        ]);
+    }
+
     public function generateVoice(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'text' => 'required',
-            'fileName' => 'required'
+            'fileName' => 'required',
+            'newFileName' => 'string',
+            'gain' => 'numeric|between:0,20'
         ]);
         if ($validator->fails()) {
             return response()->json([
@@ -27,16 +48,25 @@ class FileController extends Controller
         }
         $text = $request->text;
         $fileName = $request->fileName;
+        $newFileName = $request->newFileName . '.wav';
+        $gain = $request->gain;
         $user = $request->user();
+        if (Storage::disk('s3')->exists(strval($user->id) . '/' . 'clonedVoices/' . $newFileName)) {
+            return response()->json([
+                'message' => 'Error',
+                'errors' => 'You cannot use this name for the cloned voice because it already exists'
+            ], 400);
+        }
         $url = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'originalVoices/' . $fileName, now()->addMinutes(5));
-        $path = strval($user->id) . '/' . 'clonedVoices/' . $fileName;
+        $path = strval($user->id) . '/' . 'clonedVoices/' . $newFileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/clonedVoices';
         $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVoice/', [
             'text' => $text,
             'url' => $url,
-            'fileName' => $fileName,
+            'fileName' => $newFileName,
             'path' => $path,
-            'postRoute' => $postRoute
+            'postRoute' => $postRoute,
+            'gain' => $gain
         ]);
         if ($response) {
             return response()->json([
@@ -54,7 +84,8 @@ class FileController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'clonedVoiceName' => 'required',
-            'originalVideoName' => 'required'
+            'originalVideoName' => 'required',
+            'newFileName' => 'string'
         ]);
         if ($validator->fails()) {
             return response()->json([
@@ -62,18 +93,27 @@ class FileController extends Controller
                 'errors' => $validator->errors()->toArray()
             ], 400);
         }
+        $clonedVoice = $request->clonedVoiceName;
+        $originalVideoName = $request->originalVideoName;
+        $newFileName = $request->newFileName . '.mp4';
         $user = $request->user();
-        $clonedVoice = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'clonedVoices/' . $request->clonedVoiceName, now()->addMinutes(5));
-        $originalVideo = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'videosOriginal/' . $request->originalVideoName, now()->addMinutes(5), [
+        if (Storage::disk('s3')->exists(strval($user->id) . '/' . 'videosCloned/' . $newFileName)) {
+            return response()->json([
+                'message' => 'Error',
+                'errors' => 'You cannot use this name for the cloned video because it already exists'
+            ], 400);
+        }
+        $clonedVoice = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'clonedVoices/' . $clonedVoice, now()->addMinutes(5));
+        $originalVideo = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'videosOriginal/' . $originalVideoName, now()->addMinutes(5), [
             'ResponseContentType' => 'application/octet-stream',
-            'ResponseContentDisposition' => 'attachment; filename=' . $request->originalVideoName,
+            'ResponseContentDisposition' => 'attachment; filename=' . $originalVideoName,
         ]);
-        $path = strval($user->id) . '/' . 'videosCloned/' . $request->originalVideoName;
+        $path = strval($user->id) . '/' . 'videosCloned/' . $newFileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/videosCloned';
         $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVideo/', [
             'urlClonedVoice' => $clonedVoice,
             'urlOriginalVideo' => $originalVideo,
-            'fileName' => $request->originalVideoName,
+            'fileName' => $newFileName,
             'path' => $path,
             'postRoute' => $postRoute
         ]);
@@ -114,6 +154,12 @@ class FileController extends Controller
             ], 400);
         }
         $file = $request->file('file');
+        if (Storage::disk('s3')->exists(strval($request->user()->id) . '/' . $type . '/' . basename($file->getClientOriginalName(), '.part'))) {
+            return response()->json([
+                'message' => 'Error',
+                'errors' => 'You cannot use this name for the file because it already exists'
+            ], 400);
+        }
         if (!Storage::disk('local')->exists('chunks')) {
             Storage::disk('local')->makeDirectory('chunks');
         }
