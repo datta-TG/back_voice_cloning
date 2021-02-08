@@ -56,7 +56,7 @@ class FileController extends Controller
         $validator = Validator::make($request->all(), [
             'text' => 'required',
             'fileName' => 'required',
-            'newFileName' => 'string',
+            'newFileName' => 'string|required',
             'gain' => 'numeric|between:0,20'
         ]);
         if ($validator->fails()) {
@@ -118,7 +118,7 @@ class FileController extends Controller
         $validator = Validator::make($request->all(), [
             'clonedVoiceName' => 'required',
             'originalVideoName' => 'required',
-            'newFileName' => 'string'
+            'newFileName' => 'string|required'
         ]);
         if ($validator->fails()) {
             return response()->json([
