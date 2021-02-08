@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+set_time_limit(900);
+
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,6 +18,8 @@ use PhpParser\Node\Expr\Array_;
 class ApiRequest implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public $timeout = 900;
 
     protected $url;
     protected $params;
@@ -40,7 +44,6 @@ class ApiRequest implements ShouldQueue
     public function handle()
     {
         $response = Http::timeout(900)->post(\Config::get('values.ai_url') . $this->url . '/', $this->params);
-        Storage::disk('local')->makeDirectory('info');
-        Storage::disk('local')->put('info.json', $response);
+        Storage::disk('local')->put('info.txt', strval($response));
     }
 }

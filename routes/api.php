@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\Route;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-Route::post('/test', function (){
+/*Route::post('/test', function (){
     return \Illuminate\Support\Facades\Storage::disk('s3')->allFiles('4/videosCloned');
-});
+});*/
 
 Route::middleware('auth:api')->group(function () {
     Route::post('/upload/{type}', [FileController::class, 'upload']);

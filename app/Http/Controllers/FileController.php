@@ -79,21 +79,7 @@ class FileController extends Controller
         $url = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'originalVoices/' . $fileName, now()->addMinutes(10));
         $path = strval($user->id) . '/' . 'clonedVoices/' . $newFileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/clonedVoices';
-        /*        $job = new ApiRequest('itemsVoice', [
-                    'text' => $text,
-                    'url' => $url,
-                    'fileName' => $newFileName,
-                    'path' => $path,
-                    'postRoute' => $postRoute,
-                    'gain' => $gain
-                ]);
-                dispatch($job);
-                return response()->json([
-                    'status' => 'Success',
-                    'message' => 'Added to queue.',
-                    'path' => $path
-                ]);*/
-        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVoice/', [
+        $job = new ApiRequest('itemsVoice', [
             'text' => $text,
             'url' => $url,
             'fileName' => $newFileName,
@@ -101,16 +87,30 @@ class FileController extends Controller
             'postRoute' => $postRoute,
             'gain' => $gain
         ]);
-        if ($response) {
-            return response()->json([
-                'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
-            ]);
-        } else {
-            return response()->json([
-                'message' => 'Error',
-                'errors' => 'Failed to create voice'
-            ]);
-        }
+        dispatch($job);
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Added to queue.',
+            'path' => $path
+        ]);
+        /*        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVoice/', [
+                    'text' => $text,
+                    'url' => $url,
+                    'fileName' => $newFileName,
+                    'path' => $path,
+                    'postRoute' => $postRoute,
+                    'gain' => $gain
+                ]);
+                if ($response) {
+                    return response()->json([
+                        'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
+                    ]);
+                } else {
+                    return response()->json([
+                        'message' => 'Error',
+                        'errors' => 'Failed to create voice'
+                    ]);
+                }*/
     }
 
     public function generateVideo(Request $request)
@@ -143,36 +143,36 @@ class FileController extends Controller
         ]);
         $path = strval($user->id) . '/' . 'videosCloned/' . $newFileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/videosCloned';
-        /*        $job = new ApiRequest('itemsVideo', [
-                    'urlClonedVoice' => $clonedVoice,
-                    'urlOriginalVideo' => $originalVideo,
-                    'fileName' => $newFileName,
-                    'path' => $path,
-                    'postRoute' => $postRoute
-                ]);
-                dispatch($job);
-                return response()->json([
-                    'status' => 'Success',
-                    'message' => 'Added to queue.',
-                    'path' => $path
-                ]);*/
-        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVideo/', [
+        $job = new ApiRequest('itemsVideo', [
             'urlClonedVoice' => $clonedVoice,
             'urlOriginalVideo' => $originalVideo,
             'fileName' => $newFileName,
             'path' => $path,
             'postRoute' => $postRoute
         ]);
-        if ($response) {
-            return response()->json([
-                'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
-            ]);
-        } else {
-            return response()->json([
-                'message' => 'Error',
-                'errors' => 'Failed to create video'
-            ]);
-        }
+        dispatch($job);
+        return response()->json([
+            'status' => 'Success',
+            'message' => 'Added to queue.',
+            'path' => $path
+        ]);
+        /*        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVideo/', [
+                    'urlClonedVoice' => $clonedVoice,
+                    'urlOriginalVideo' => $originalVideo,
+                    'fileName' => $newFileName,
+                    'path' => $path,
+                    'postRoute' => $postRoute
+                ]);
+                if ($response) {
+                    return response()->json([
+                        'url' => Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5))
+                    ]);
+                } else {
+                    return response()->json([
+                        'message' => 'Error',
+                        'errors' => 'Failed to create video'
+                    ]);
+                }*/
     }
 
     public function list(Request $request, $type)
