@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 set_time_limit(900);
 
+use App\Jobs\ApiRequest;
 use App\Models\File;
 use Exception;
 use Illuminate\Http\Request;
@@ -13,6 +14,24 @@ use Illuminate\Support\Facades\Validator;
 
 class FileController extends Controller
 {
+    public function verifyFile(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'path' => 'required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error',
+                'errors' => $validator->errors()->toArray()
+            ], 400);
+        }
+        $path = $request->path;
+        $fileExist = Storage::disk('s3')->exists($path);
+        return response()->json([
+            'fileStatus' => $fileExist
+        ]);
+    }
+
     public function preview(Request $request, $type)
     {
         $validator = Validator::make($request->all(), [
@@ -54,12 +73,26 @@ class FileController extends Controller
         if (Storage::disk('s3')->exists(strval($user->id) . '/' . 'clonedVoices/' . $newFileName)) {
             return response()->json([
                 'message' => 'Error',
-                'errors' => 'You cannot use this name for the cloned voice because it already exists'
+                'errors' => 'You cannot use this name for the cloned voice because it already exists.'
             ], 400);
         }
-        $url = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'originalVoices/' . $fileName, now()->addMinutes(5));
+        $url = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'originalVoices/' . $fileName, now()->addMinutes(10));
         $path = strval($user->id) . '/' . 'clonedVoices/' . $newFileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/clonedVoices';
+        /*        $job = new ApiRequest('itemsVoice', [
+                    'text' => $text,
+                    'url' => $url,
+                    'fileName' => $newFileName,
+                    'path' => $path,
+                    'postRoute' => $postRoute,
+                    'gain' => $gain
+                ]);
+                dispatch($job);
+                return response()->json([
+                    'status' => 'Success',
+                    'message' => 'Added to queue.',
+                    'path' => $path
+                ]);*/
         $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVoice/', [
             'text' => $text,
             'url' => $url,
@@ -103,13 +136,26 @@ class FileController extends Controller
                 'errors' => 'You cannot use this name for the cloned video because it already exists'
             ], 400);
         }
-        $clonedVoice = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'clonedVoices/' . $clonedVoice, now()->addMinutes(5));
-        $originalVideo = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'videosOriginal/' . $originalVideoName, now()->addMinutes(5), [
+        $clonedVoice = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'clonedVoices/' . $clonedVoice, now()->addMinutes(10));
+        $originalVideo = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'videosOriginal/' . $originalVideoName, now()->addMinutes(10), [
             'ResponseContentType' => 'application/octet-stream',
             'ResponseContentDisposition' => 'attachment; filename=' . $originalVideoName,
         ]);
         $path = strval($user->id) . '/' . 'videosCloned/' . $newFileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/videosCloned';
+        /*        $job = new ApiRequest('itemsVideo', [
+                    'urlClonedVoice' => $clonedVoice,
+                    'urlOriginalVideo' => $originalVideo,
+                    'fileName' => $newFileName,
+                    'path' => $path,
+                    'postRoute' => $postRoute
+                ]);
+                dispatch($job);
+                return response()->json([
+                    'status' => 'Success',
+                    'message' => 'Added to queue.',
+                    'path' => $path
+                ]);*/
         $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVideo/', [
             'urlClonedVoice' => $clonedVoice,
             'urlOriginalVideo' => $originalVideo,
