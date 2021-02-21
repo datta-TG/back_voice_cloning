@@ -14,6 +14,38 @@ use Illuminate\Support\Facades\Validator;
 
 class FileController extends Controller
 {
+    public function delete(Request $request, $type)
+    {
+        $validator = Validator::make($request->all(), [
+            'fileName' => 'required',
+        ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Error',
+                'errors' => $validator->errors()->toArray()
+            ], 400);
+        }
+        $user = $request->user();
+        $filename = $request->fileName;
+        $path = strval($user->id) . '/' . $type . '/' . $filename;
+        $file = File::where('route', $path)->first();
+        if ($file) {
+            $file->delete();
+        }
+        if (Storage::disk('s3')->exists($path)) {
+            Storage::disk('s3')->delete($path);
+            return response()->json([
+                'status' => 'Success',
+                'message' => 'Deleted.'
+            ]);
+        } else {
+            return response()->json([
+                'status' => 'Error',
+                'message' => 'File not exist.'
+            ]);
+        }
+    }
+
     public function verifyFile(Request $request)
     {
         $validator = Validator::make($request->all(), [
