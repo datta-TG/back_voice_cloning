@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 /*Route::post('/test', function (){
-    return \Illuminate\Support\Facades\Storage::disk('s3')->allFiles('1/videosOriginal');
+    return \Illuminate\Support\Facades\Storage::disk('s3')->allFiles('1/originalVoices');
 });*/
 
 Route::middleware('auth:api')->group(function () {
@@ -25,7 +25,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/generate-voice', [FileController::class, 'generateVoice']);
     Route::post('/generate-video', [FileController::class, 'generateVideo']);
     Route::post('/get-url/{type}', [FileController::class, 'preview']);
-    Route::delete('/delete/{type}', [FileController::class, 'delete']);
+    Route::delete('/delete/{type}/{fileName}', [FileController::class, 'delete']);
     Route::post('/verify-file', [FileController::class, 'verifyFile']);
 });
 

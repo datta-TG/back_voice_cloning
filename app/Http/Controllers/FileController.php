@@ -14,20 +14,10 @@ use Illuminate\Support\Facades\Validator;
 
 class FileController extends Controller
 {
-    public function delete(Request $request, $type)
+    public function delete(Request $request, $type, $fileName)
     {
-        $validator = Validator::make($request->all(), [
-            'fileName' => 'required',
-        ]);
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Error',
-                'errors' => $validator->errors()->toArray()
-            ], 400);
-        }
         $user = $request->user();
-        $filename = $request->fileName;
-        $path = strval($user->id) . '/' . $type . '/' . $filename;
+        $path = strval($user->id) . '/' . $type . '/' . $fileName;
         $file = File::where('route', $path)->first();
         if ($file) {
             $file->delete();
