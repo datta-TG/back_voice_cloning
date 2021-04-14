@@ -22,8 +22,8 @@ class FileController extends Controller
         if ($file) {
             $file->delete();
         }
-        if (Storage::disk('s3')->exists($path)) {
-            Storage::disk('s3')->delete($path);
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
             return response()->json([
                 'status' => 'Success',
                 'message' => 'Deleted.'
@@ -48,7 +48,7 @@ class FileController extends Controller
             ], 400);
         }
         $path = $request->path;
-        $fileExist = Storage::disk('s3')->exists($path);
+        $fileExist = Storage::disk('public')->exists($path);
         return response()->json([
             'fileStatus' => $fileExist
         ]);
@@ -67,7 +67,7 @@ class FileController extends Controller
         }
         $user = $request->user();
         $filename = $request->fileName;
-        $url = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . $type . '/' . $filename, now()->addMinutes(5));
+        $url = asset('storage/' . strval($user->id) . '/' . $type . '/' . $filename);
         return response()->json([
             'url' => $url
         ]);
@@ -92,14 +92,15 @@ class FileController extends Controller
         $newFileName = $request->newFileName . '.wav';
         $gain = $request->gain;
         $user = $request->user();
-        if (Storage::disk('s3')->exists(strval($user->id) . '/' . 'clonedVoices/' . $newFileName)) {
+        if (Storage::disk('public')->exists(strval($user->id) . '/' . 'clonedVoices/' . $newFileName)) {
             return response()->json([
                 'message' => 'Error',
                 'errors' => 'You cannot use this name for the cloned voice because it already exists.'
             ], 400);
         }
-        $url = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'originalVoices/' . $fileName, now()->addMinutes(10));
-        $path = strval($user->id) . '/' . 'clonedVoices/' . $newFileName;
+
+        $url = asset('storage/' . strval($user->id) . '/' . 'originalVoices/' . $fileName);// Storage::disk('local')->url(strval($user->id) . '/' . 'originalVoices/' . $fileName);
+        $path = Storage::disk('public')->path('') . strval($user->id) . '/' . 'clonedVoices/' . $newFileName; // strval($user->id) . '/' . 'clonedVoices/' . $newFileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/clonedVoices';
         $job = new ApiRequest('itemsVoice', [
             'text' => $text,
@@ -152,18 +153,15 @@ class FileController extends Controller
         $originalVideoName = $request->originalVideoName;
         $newFileName = $request->newFileName . '.mp4';
         $user = $request->user();
-        if (Storage::disk('s3')->exists(strval($user->id) . '/' . 'videosCloned/' . $newFileName)) {
+        if (Storage::disk('public')->exists(strval($user->id) . '/' . 'videosCloned/' . $newFileName)) {
             return response()->json([
                 'message' => 'Error',
                 'errors' => 'You cannot use this name for the cloned video because it already exists'
             ], 400);
         }
-        $clonedVoice = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'clonedVoices/' . $clonedVoice, now()->addMinutes(10));
-        $originalVideo = Storage::disk('s3')->temporaryUrl(strval($user->id) . '/' . 'videosOriginal/' . $originalVideoName, now()->addMinutes(10), [
-            'ResponseContentType' => 'application/octet-stream',
-            'ResponseContentDisposition' => 'attachment; filename=' . $originalVideoName,
-        ]);
-        $path = strval($user->id) . '/' . 'videosCloned/' . $newFileName;
+        $clonedVoice = asset('storage/' . strval($user->id) . '/' . 'clonedVoices/' . $clonedVoice);
+        $originalVideo = asset('storage/' . strval($user->id) . '/' . 'videosOriginal/' . $originalVideoName);
+        $path = Storage::disk('public')->path('') . strval($user->id) . '/' . 'videosCloned/' . $newFileName;
         $postRoute = \Config::get('values.app_url') . '/api/upload/videosCloned';
         $job = new ApiRequest('itemsVideo', [
             'urlClonedVoice' => $clonedVoice,
@@ -222,7 +220,7 @@ class FileController extends Controller
             ], 400);
         }
         $file = $request->file('file');
-        if (Storage::disk('s3')->exists(strval($request->user()->id) . '/' . $type . '/' . basename($file->getClientOriginalName(), '.part'))) {
+        if (Storage::disk('local')->exists(strval($request->user()->id) . '/' . $type . '/' . basename($file->getClientOriginalName(), '.part'))) {
             return response()->json([
                 'message' => 'Error',
                 'errors' => 'You cannot use this name for the file because it already exists'
@@ -241,14 +239,14 @@ class FileController extends Controller
             $target = Storage::disk('local')->path('saved');
             \Illuminate\Support\Facades\File::move($path, "$target/$name");
             $s3Path = strval($request->user()->id) . '/' . $type . '/' . $name;
-            if (Storage::disk('s3')->exists($s3Path)) {
+            if (Storage::disk('local')->exists($s3Path)) {
 
-                Storage::disk('s3')->delete($s3Path);
+                Storage::disk('local')->delete($s3Path);
 
             }
-            $upload = Storage::disk('s3')->writeStream($s3Path, Storage::disk('local')->readStream("saved/$name"));
+            $upload = Storage::disk('public')->writeStream($s3Path, Storage::disk('local')->readStream("saved/$name"));
             if ($upload === false) {
-                throw new Exception("Couldn't upload file to S3");
+                throw new Exception("Couldn't upload file");
             }
             File::create([
                 'name' => $name,

@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,8 +16,8 @@ use Illuminate\Support\Facades\Route;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-/*Route::post('/test', function (){
-    return \Illuminate\Support\Facades\Storage::disk('s3')->allFiles('1/originalVoices');
+/*Route::get('/test', function (){
+    return Storage::disk('public')->path('') . strval(5) . '/' . 'videosOriginal/' . 'hola.txt';;
 });*/
 
 Route::middleware('auth:api')->group(function () {

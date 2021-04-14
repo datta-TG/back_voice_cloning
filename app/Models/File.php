@@ -17,7 +17,7 @@ class File extends Model
         'user_id'
     ];
     private static $config = array(
-        'disk' => 's3',
+        'disk' => 'public',
         'maxUploadFileSize' => null,
         'allowFileTypes' => ['mp4', 'wav', 'jpg'],
         'directories' => ['originalVoices', 'clonedVoices', 'videosOriginal', 'videosCloned']
