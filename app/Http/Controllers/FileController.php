@@ -114,7 +114,7 @@ class FileController extends Controller
         return response()->json([
             'status' => 'Success',
             'message' => 'Added to queue.',
-            'path' => $path
+            'path' => $url
         ]);
         /*        $response = Http::timeout(900)->post(\Config::get('values.ai_url') . 'itemsVoice/', [
                     'text' => $text,
